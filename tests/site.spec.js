@@ -1,118 +1,132 @@
 // @ts-check
-// 公開前テスト（CLAUDE.md「公開前テスト（必須）」準拠）
+// 公開前テスト：ポータル＋1号機（EC画像一括リサイズ＆加工ツール）
 //   cd tests && npm install && npx playwright install chromium && npx playwright test
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
-const path = require('path');
-const zlib = require('zlib');
 const JSZip = require('jszip');
+const { files, registerHooks, enterKey, URLS } = require('./helpers');
 
 const PORTAL = '/index.html';
 const TOOL = '/tools/ec-image-batch/index.html';
-const JSZIP_LOCAL = require.resolve('jszip/dist/jszip.min.js');
+const USAGE_KEY = 'sakutto-ec-daily-usage';
 
-/* ---------- テスト用PNGを依存なしで生成 ---------- */
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-function crc32(buf) {
-  let c = 0xffffffff;
-  for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-function chunk(type, data) {
-  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
-  const td = Buffer.concat([Buffer.from(type), data]);
-  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td));
-  return Buffer.concat([len, td, crc]);
-}
-function makePng(w, h, [r, g, b]) {
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; ihdr[9] = 2; // 8bit RGB
-  const row = Buffer.alloc(1 + w * 3);
-  for (let x = 0; x < w; x++) { row[1 + x * 3] = r; row[2 + x * 3] = g; row[3 + x * 3] = b; }
-  const raw = Buffer.concat(Array.from({ length: h }, () => row));
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
-  ]);
-}
-const files = (n) => Array.from({ length: n }, (_, i) => ({
-  name: `item${i + 1}.png`, mimeType: 'image/png', buffer: makePng(120 + i * 10, 80, [200, 40 + i * 30, 60]),
-}));
+registerHooks({ allowCdn: true });
 
-/* ---------- 共通フック：コンソールエラー収集・外部送信監視 ---------- */
-let consoleErrors, externalRequests;
-test.beforeEach(async ({ page }) => {
-  consoleErrors = []; externalRequests = [];
-  page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
-  page.on('pageerror', (e) => consoleErrors.push(String(e)));
-  // JSZip（CDN）はローカルの同一ファイルで代替（オフラインでもテスト可能に）
-  await page.route('https://cdnjs.cloudflare.com/ajax/libs/jszip/**', (route) =>
-    route.fulfill({ contentType: 'text/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(JSZIP_LOCAL, 'utf8') }));
-  page.on('request', (req) => {
-    const u = req.url();
-    if (/^https?:/.test(u) && !u.startsWith('http://127.0.0.1:4173') && !u.startsWith('https://cdnjs.cloudflare.com/ajax/libs/jszip/')) {
-      externalRequests.push(`${req.method()} ${u}`);
-    }
-  });
-});
-test.afterEach(async () => {
-  expect(consoleErrors, 'コンソールエラー・例外がゼロであること').toEqual([]);
-  expect(externalRequests, 'CDNライブラリ以外への外部通信がないこと').toEqual([]);
-});
-
-async function enterKey(page, key) {
-  await page.getByTestId('open-license').click();
-  await page.getByTestId('license-input').fill(key);
-  await page.getByTestId('license-submit').click();
+/** ブラウザ側のローカル日付で、当日の使用枚数を直接セットする */
+async function setUsage(page, count, dayOffset = 0) {
+  await page.evaluate(([k, c, off]) => {
+    const d = new Date(); d.setDate(d.getDate() + off);
+    const s = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    localStorage.setItem(k, JSON.stringify({ date: s, count: c }));
+  }, [USAGE_KEY, count, dayOffset]);
 }
 
-/* ---------- 1. 表示・コンソールエラーゼロ ---------- */
-test('ポータル：表示・必須要素・プレースホルダー', async ({ page }) => {
+/* ================= ポータル ================= */
+test('ポータル：表示・2号機カード（NEW）・購入リンク・価格表記', async ({ page }) => {
   await page.goto(PORTAL);
   await expect(page).toHaveTitle(/サクッと業務ツール工房/);
   await expect(page.getByRole('heading', { name: 'あなたのデータは、どこにも送信されません' })).toBeVisible();
   await expect(page.getByTestId('tool-card-ec')).toBeVisible();
-  await expect(page.locator('.tool-card.soon')).toHaveCount(3);
-  await expect(page.locator('a[href="{{NOTE_SINGLE_URL}}"]').first()).toBeAttached();
-  await expect(page.locator('a[href="{{NOTE_MASTER_URL}}"]').first()).toBeAttached();
-  await expect(page.locator('a[href="./tools/ec-image-batch/index.html"]').first()).toBeAttached();
+  const inv = page.getByTestId('tool-card-invoice');
+  await expect(inv).toBeVisible();
+  await expect(inv.locator('.tag')).toHaveText('NEW');
+  await expect(inv.locator('a[href="tools/invoice-batch/"]')).toBeVisible();
+  await expect(page.locator('.tool-card.soon')).toHaveCount(2);
+  // 既存の note 実URLが残っていること・2号機はプレースホルダー
+  await expect(page.locator(`a[href="${URLS.noteSingle}"]`).first()).toBeAttached();
+  await expect(page.locator(`a[href="${URLS.noteMaster}"]`).first()).toBeAttached();
+  await expect(page.locator('a[href="{{NOTE_INVOICE_URL}}"]').first()).toBeAttached();
+  // マスターキー価格：初期応援価格1,480円＋値上げ予告
+  await expect(page.getByTestId('master-price-note')).toHaveText('ツール5個公開まで初期応援価格 1,480円（以降2,980円に値上げ）');
+  await expect(page.locator('.price-box .price')).toContainText('1,480');
   await expect(page.getByTestId('pro-badge')).toBeHidden();
 });
 
-test('ツール：表示（無料版状態）', async ({ page }) => {
+/* ================= 1号機：表示 ================= */
+test('1号機：表示（無料版）・料金表・解説・2号機リンク', async ({ page }) => {
   await page.goto(TOOL);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('EC・フリマ・ブログ用 画像一括リサイズ＆白余白・透かし加工ツール');
-  await expect(page.getByTestId('plan-chip')).toHaveText('無料版：1回3枚まで');
+  await expect(page.getByTestId('plan-chip')).toHaveText('無料版：1日3枚まで');
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 3 / 3 枚');
   await expect(page.getByTestId('pro-badge')).toBeHidden();
-  await expect(page.locator('a[href="{{NOTE_SINGLE_URL}}"]').first()).toBeAttached();
-  await expect(page.locator('a[href="{{NOTE_MASTER_URL}}"]').first()).toBeAttached();
+  const pricing = page.getByTestId('pricing-table');
+  await expect(pricing).toContainText('0円');
+  await expect(pricing).toContainText('780');
+  await expect(pricing).toContainText('今だけ1,480');
+  await expect(pricing).toContainText('2,980円に値上げ');
+  await expect(pricing.locator(`a[href="${URLS.noteSingle}"]`)).toBeVisible();
+  await expect(pricing.locator(`a[href="${URLS.noteMaster}"]`)).toBeVisible();
+  await expect(page.getByTestId('guide')).toContainText('使い方は3ステップ');
+  await expect(page.getByTestId('guide').locator('details')).toHaveCount(4);
+  await expect(page.getByTestId('crosslink-invoice')).toHaveAttribute('href', '../invoice-batch/');
 });
 
-/* ---------- 2. 無料版の制限 ---------- */
-test('無料版：4枚目以降はロックされ処理がブロックされる', async ({ page }) => {
+/* ================= 1号機：無料版の1日3枚制限 ================= */
+test('無料版：3枚処理でき、同日4枚目はブロックされる', async ({ page }) => {
   await page.goto(TOOL);
-  await page.getByTestId('file-input').setInputFiles(files(4));
-  const thumbs = page.locator('[data-testid="thumb"]');
-  await expect(thumbs).toHaveCount(4);
-  await expect(thumbs.nth(3)).toHaveClass(/locked/);
+  await page.getByTestId('file-input').setInputFiles(files(3));
+  await expect(page.locator('[data-testid="thumb"].locked')).toHaveCount(0);
+  await page.getByTestId('process-btn').click();
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(3);
+  await expect(page.getByTestId('status')).toContainText('3枚の処理が完了');
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 0 / 3 枚');
+  expect(JSON.parse(await page.evaluate((k) => localStorage.getItem(k), USAGE_KEY)).count).toBe(3);
+
+  // 同じ日に4枚目
+  await page.locator('#clearBtn').click();
+  await page.getByTestId('file-input').setInputFiles(files(1, 'extra'));
   await expect(page.locator('[data-testid="thumb"].locked')).toHaveCount(1);
   await expect(page.getByTestId('limit-banner')).toBeVisible();
-
+  await expect(page.getByTestId('limit-banner')).toContainText('使い切りました');
   await page.getByTestId('process-btn').click();
-  await expect(page.getByTestId('status')).toContainText('3枚の処理が完了');
-  await expect(page.locator('[data-testid="result"]')).toHaveCount(3);
-  await expect(page.getByTestId('status')).toContainText('1枚は処理されていません');
+  await expect(page.getByTestId('status')).toContainText('処理できません');
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(0);
+  expect(JSON.parse(await page.evaluate((k) => localStorage.getItem(k), USAGE_KEY)).count).toBe(3);
 
-  // 透かし位置カスタムはロック（右下以外は無効）
+  // リロードしても当日の消費は維持される
+  await page.reload();
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 0 / 3 枚');
+});
+
+test('無料版：残り2枚で5枚を処理しようとするとまるごとブロック', async ({ page }) => {
+  await page.goto(TOOL);
+  await setUsage(page, 1);
+  await page.reload();
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 2 / 3 枚');
+  await page.getByTestId('file-input').setInputFiles(files(5));
+  await expect(page.locator('[data-testid="thumb"].locked')).toHaveCount(3);
+  await page.getByTestId('process-btn').click();
+  await expect(page.getByTestId('status')).toContainText('本日の無料枠は残り2枚です');
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(0);
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 2 / 3 枚');
+
+  // 2枚に減らせば処理できる
+  for (let i = 0; i < 3; i++) await page.locator('[data-testid="thumb"] .rm').last().click();
+  await page.getByTestId('process-btn').click();
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(2);
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 0 / 3 枚');
+});
+
+test('無料版：保存日付が前日なら残り枠がリセットされる', async ({ page }) => {
+  await page.goto(TOOL);
+  await setUsage(page, 3, -1);
+  await page.reload();
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 3 / 3 枚');
+  await page.getByTestId('file-input').setInputFiles(files(3));
+  await page.getByTestId('process-btn').click();
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(3);
+  const u = JSON.parse(await page.evaluate((k) => localStorage.getItem(k), USAGE_KEY));
+  expect(u.count).toBe(3);
+  expect(u.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('無料版：透かし位置カスタムとZIP一括DLはロック', async ({ page }) => {
+  await page.goto(TOOL);
   await expect(page.locator('#posGrid button[data-pos="tl"]')).toBeDisabled();
   await expect(page.locator('#wmTile')).toBeDisabled();
-
-  // ZIP一括DLはブロックされ、キー入力モーダルが開く
+  await page.getByTestId('file-input').setInputFiles(files(1));
+  await page.getByTestId('process-btn').click();
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(1);
   let downloaded = false;
   page.on('download', () => { downloaded = true; });
   await page.getByTestId('zip-btn').click();
@@ -121,59 +135,69 @@ test('無料版：4枚目以降はロックされ処理がブロックされる'
   expect(downloaded).toBe(false);
 });
 
-test('無効なキーでは解除されない', async ({ page }) => {
+test('無効なキー・他ツールのキーでは解除されない', async ({ page }) => {
   await page.goto(TOOL);
   await enterKey(page, 'WRONG-KEY-0000');
   await expect(page.locator('#licenseMsg')).toContainText('正しくありません');
+  await page.getByTestId('license-input').fill('PRO-INV-2026');
+  await page.getByTestId('license-submit').click();
+  await expect(page.locator('#licenseMsg')).toContainText('別のツール用');
   await expect(page.getByTestId('pro-badge')).toBeHidden();
 });
 
-/* ---------- 3. 単体キー ---------- */
-test('単体キー PRO-EC-2026 でロック解除・再訪時に自動復元', async ({ page }) => {
+/* ================= 1号機：プロ版 ================= */
+test('単体キー PRO-EC-2026：無料枠を使い切っていても制限解除・再訪時に自動復元', async ({ page }) => {
   await page.goto(TOOL);
+  await setUsage(page, 3);
+  await page.reload();
+  await expect(page.getByTestId('quota')).toHaveText('本日の無料枠：残り 0 / 3 枚');
   await enterKey(page, 'PRO-EC-2026');
   await expect(page.getByTestId('pro-badge')).toBeVisible();
   await expect(page.getByTestId('plan-chip')).toContainText('プロ版');
+  await expect(page.getByTestId('quota')).toHaveText('プロ版：1回最大100枚・1日の上限なし');
 
-  await page.getByTestId('file-input').setInputFiles(files(5));
+  await page.getByTestId('file-input').setInputFiles(files(6));
   await expect(page.locator('[data-testid="thumb"].locked')).toHaveCount(0);
   await expect(page.getByTestId('limit-banner')).toBeHidden();
   await page.getByTestId('process-btn').click();
-  await expect(page.locator('[data-testid="result"]')).toHaveCount(5);
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(6);
   await expect(page.locator('#posGrid button[data-pos="tl"]')).toBeEnabled();
+  // もう一度処理しても制限なし
+  await page.getByTestId('process-btn').click();
+  await expect(page.getByTestId('status')).toContainText('6枚の処理が完了');
 
   await page.reload();
   await expect(page.getByTestId('pro-badge')).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('sakutto-kobo-license-keys'))).toContain('PRO-EC-2026');
-
-  // ポータル側でも認証状態が反映される
   await page.goto(PORTAL);
   await expect(page.getByTestId('pro-badge')).toBeVisible();
 });
 
-/* ---------- 4. マスターキー ---------- */
-test('マスターキー MASTER-2026-VIP：ポータルで入力 → ツールも解除', async ({ page }) => {
+test('マスターキー MASTER-2026-VIP：ポータルで入力 → 1号機も制限解除', async ({ page }) => {
   await page.goto(PORTAL);
   await enterKey(page, 'MASTER-2026-VIP');
   await expect(page.getByTestId('pro-badge')).toBeVisible();
   await expect(page.getByTestId('pro-badge')).toContainText('マスター');
 
   await page.goto(TOOL);
+  await setUsage(page, 3);
+  await page.reload();
   await expect(page.getByTestId('pro-badge')).toBeVisible();
-  await page.getByTestId('file-input').setInputFiles(files(4));
+  await page.getByTestId('file-input').setInputFiles(files(5));
   await expect(page.locator('[data-testid="thumb"].locked')).toHaveCount(0);
   await page.getByTestId('process-btn').click();
-  await expect(page.locator('[data-testid="result"]')).toHaveCount(4);
+  await expect(page.locator('[data-testid="result"]')).toHaveCount(5);
 });
 
-test('マスターキー MASTER-2026-VIP：ツール画面で直接入力（小文字・空白も許容）', async ({ page }) => {
+test('マスターキー MASTER-2026-VIP：1号機で直接入力（小文字・空白も許容）', async ({ page }) => {
   await page.goto(TOOL);
   await enterKey(page, '  master-2026-vip ');
   await expect(page.getByTestId('pro-badge')).toBeVisible();
   await expect(page.locator('#wmTile')).toBeEnabled();
+  await expect(page.getByTestId('quota')).toContainText('1日の上限なし');
 });
 
-/* ---------- 5. ダウンロード ---------- */
+/* ================= 1号機：ダウンロード ================= */
 test('単体ダウンロードが発火する（無料版）', async ({ page }) => {
   await page.goto(TOOL);
   await page.getByTestId('file-input').setInputFiles(files(1));
@@ -185,7 +209,7 @@ test('単体ダウンロードが発火する（無料版）', async ({ page }) 
   expect(buf.subarray(0, 3).toString('hex')).toBe('ffd8ff'); // JPEG
 });
 
-test('ZIP一括ダウンロードが発火し、全画像が含まれる（プロ版）', async ({ page }) => {
+test('ZIP一括ダウンロードが発火し、全画像が含まれる（プロ版・順次キュー処理）', async ({ page }) => {
   await page.goto(TOOL);
   await enterKey(page, 'PRO-EC-2026');
   await page.locator('#presets [data-preset="webp"]').click();

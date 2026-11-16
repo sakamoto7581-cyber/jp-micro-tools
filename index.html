@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>サクッと業務ツール工房 ｜ サーバー送信ゼロの業務効率化ツール集</title>
-<meta name="description" content="画像の一括リサイズなど、ブラウザだけで完結する業務ツール集。データは外部サーバーへ一切送信されません。広告ゼロ・登録不要。">
+<meta name="description" content="画像の一括リサイズ、インボイス対応の請求書作成など、ブラウザだけで完結する業務ツール集。データは外部サーバーへ一切送信されません。広告ゼロ・登録不要。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
 <style>
   *,*::before,*::after{box-sizing:border-box}
@@ -88,7 +88,10 @@
   .tool-card.soon{border-style:dashed;background:#fbfdff}
   .tool-card.soon h3{color:#475569}
   .unlock-state{font-size:13px;font-weight:700;color:var(--ok);margin:-6px 0 12px;display:none}
-  body.unlocked-ec-image-batch .unlock-ec-image-batch{display:block}
+  body.unlocked-ec-image-batch .unlock-ec-image-batch,body.unlocked-invoice-batch .unlock-invoice-batch{display:block}
+  .tag-new{background:#fef2f2;color:#dc2626}
+  .price-box .was{font-size:13px;color:var(--muted);text-decoration:line-through}
+  .price-box .up{display:inline-block;background:var(--gold-l);color:var(--gold);font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;margin-bottom:12px}
 
   .master{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;border-radius:20px;padding:40px 28px;display:grid;gap:28px;grid-template-columns:1.3fr 1fr;align-items:center}
   @media (max-width:800px){.master{grid-template-columns:1fr}}
@@ -126,7 +129,7 @@
       <button class="btn btn-ghost btn-sm" id="toolsMenuBtn" aria-haspopup="true" aria-expanded="false">ツール一覧 ▾</button>
       <div class="tools-menu-list" role="menu">
         <a href="./tools/ec-image-batch/index.html" role="menuitem">① EC画像一括リサイズ＆加工ツール</a>
-        <span>② 追加予定</span>
+        <a href="./tools/invoice-batch/index.html" role="menuitem">② インボイス対応 請求書・納品書・領収書ジェネレーター</a>
         <span>③ 追加予定</span>
       </div>
     </div>
@@ -149,8 +152,9 @@
     </div>
     <div class="modal-buy">
       キーをお持ちでない方：
-      <a href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">単体キーを購入（780円）</a> ／
-      <a href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">マスターキーを購入（2,980円）</a>
+      <a href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">画像ツール単体キー（780円）</a> ／
+      <a href="{{NOTE_INVOICE_URL}}" target="_blank" rel="noopener">請求書ツール単体キー（780円）</a> ／
+      <a href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">マスターキーを購入（今だけ1,480円）</a>
     </div>
   </div>
 </div>
@@ -215,22 +219,28 @@
             <li>ドラッグ＆ドロップで複数画像を一括処理</li>
             <li>メルカリ／Amazon／楽天／WebP変換プリセット</li>
             <li>白背景の余白追加・テキスト透かし</li>
-            <li>無料版：1回3枚まで／プロ版：100枚＋ZIP一括DL</li>
+            <li>無料版：1日3枚まで／プロ版：1回100枚＋ZIP一括DL</li>
           </ul>
           <div class="actions">
             <a class="btn btn-primary btn-sm" href="./tools/ec-image-batch/index.html">ツールを使う</a>
             <a class="btn btn-ghost btn-sm" href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">単体キー 780円</a>
           </div>
         </article>
-        <article class="card tool-card soon">
-          <span class="tag tag-soon">追加予定</span>
+        <article class="card tool-card" data-testid="tool-card-invoice">
+          <span class="tag tag-new">NEW</span>
           <span class="no">TOOL 02</span>
-          <h3>近日公開予定のツール</h3>
+          <h3>インボイス対応 請求書・納品書・領収書PDF一括ジェネレーター</h3>
+          <p class="unlock-state unlock-invoice-batch">✓ このブラウザではプロ版が有効です</p>
           <ul>
-            <li>日々の定型業務を効率化するツールを準備中です</li>
-            <li>マスターキー購入者は追加料金なしで利用可能</li>
+            <li>請求書／納品書／領収書をタブで切り替え</li>
+            <li>8%・10%の税率別に消費税を自動計算、登録番号チェック</li>
+            <li>A4でそのまま印刷・PDF保存（無料版は回数無制限）</li>
+            <li>プロ版：CSVから最大50件一括作成・ロゴ／角印・クレジット消去</li>
           </ul>
-          <div class="actions"><span class="btn btn-ghost btn-sm" aria-disabled="true" style="opacity:.6;cursor:default">準備中</span></div>
+          <div class="actions">
+            <a class="btn btn-primary btn-sm" href="tools/invoice-batch/">ツールを使う</a>
+            <a class="btn btn-ghost btn-sm" href="{{NOTE_INVOICE_URL}}" target="_blank" rel="noopener">単体キー 780円</a>
+          </div>
         </article>
         <article class="card tool-card soon">
           <span class="tag tag-soon">追加予定</span>
@@ -272,21 +282,25 @@
         </div>
         <div class="price-box">
           <div class="label">マスターキー（全ツール共通）</div>
-          <div class="price">2,980<small>円（買い切り）</small></div>
+          <div class="was">通常 2,980円</div>
+          <div class="price"><small>今だけ</small>1,480<small>円（買い切り）</small></div>
+          <div class="up" data-testid="master-price-note">ツール5個公開まで初期応援価格 1,480円（以降2,980円に値上げ）</div>
           <a class="btn btn-gold" style="width:100%" href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">マスターキーを購入する</a>
-          <div class="note">noteの有料記事としてキーをお届けします。<br>特定のツールだけ使いたい方は <a href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">単体キー（780円）</a> もどうぞ。</div>
+          <div class="note">noteの有料記事としてキーをお届けします。<br>特定のツールだけ使いたい方は単体キー（各780円）もどうぞ：<a href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">画像ツール</a> ／ <a href="{{NOTE_INVOICE_URL}}" target="_blank" rel="noopener">請求書ツール</a></div>
         </div>
       </div>
 
       <h3 style="text-align:center;margin:44px 0 14px">プラン比較</h3>
       <div class="table-scroll">
         <table class="plan-table">
-          <thead><tr><th></th><th>無料版</th><th>単体キー<br><small>780円</small></th><th>マスターキー<br><small>2,980円</small></th></tr></thead>
+          <thead><tr><th></th><th>無料版</th><th>単体キー<br><small>780円</small></th><th>マスターキー<br><small>今だけ1,480円（ツール5個公開で2,980円）</small></th></tr></thead>
           <tbody>
             <tr><td>対象ツール</td><td>全ツール（制限あり）</td><td>購入した1ツール</td><td><b>全ツール＋今後の追加分</b></td></tr>
-            <tr><td>画像加工：1回の処理枚数</td><td>3枚</td><td>100枚</td><td>100枚</td></tr>
+            <tr><td>画像加工：処理枚数</td><td>1日3枚まで</td><td>1回100枚・1日無制限</td><td>1回100枚・1日無制限</td></tr>
             <tr><td>ZIP一括ダウンロード</td><td>—</td><td>✓</td><td>✓</td></tr>
             <tr><td>透かし位置カスタム</td><td>—</td><td>✓</td><td>✓</td></tr>
+            <tr><td>帳票：1枚ずつ作成・印刷</td><td>✓（回数無制限）</td><td>✓</td><td>✓</td></tr>
+            <tr><td>帳票：CSV一括作成・ロゴ／角印・クレジット消去</td><td>—</td><td>✓</td><td>✓</td></tr>
             <tr><td>広告表示</td><td>なし</td><td>なし</td><td>なし</td></tr>
           </tbody>
         </table>
@@ -322,7 +336,8 @@
   var MASTER_KEY = 'MASTER-2026-VIP';
   // ツール登録簿（ツール追加時はここに追記）
   var TOOLS = {
-    'ec-image-batch': { name: 'EC画像一括リサイズ＆加工ツール', key: 'PRO-EC-2026' }
+    'ec-image-batch': { name: 'EC画像一括リサイズ＆加工ツール', key: 'PRO-EC-2026' },
+    'invoice-batch': { name: 'インボイス対応 請求書・納品書・領収書ジェネレーター', key: 'PRO-INV-2026' }
   };
   var CURRENT_TOOL = null; // ポータルは特定ツールに属さない
 

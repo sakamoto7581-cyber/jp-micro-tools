@@ -132,6 +132,39 @@
   .zip-lock{font-size:11px;background:#f1f5f9;color:var(--muted);padding:2px 7px;border-radius:999px;margin-left:4px}
   body.is-pro .zip-lock{display:none}
   .empty{color:var(--muted);font-size:14px;text-align:center;padding:16px}
+  .quota{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--brand-l);color:var(--brand)}
+  .quota.empty-q{background:#fef2f2;color:#dc2626}
+  .status.err{color:#dc2626;font-weight:700}
+
+  /* ===== 料金比較・解説 ===== */
+  .info{padding:8px 0 56px}
+  .info h2.sec{font-size:22px;margin:40px 0 8px;text-align:center}
+  .info .lead{text-align:center;color:var(--muted);margin:0 auto 22px;max-width:680px;font-size:14px}
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width:820px){.plans{grid-template-columns:1fr}}
+  .plan{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;display:flex;flex-direction:column;position:relative}
+  .plan.reco{border-color:#f59e0b;box-shadow:0 0 0 1px #f59e0b inset}
+  .plan .ribbon{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#fff;font-size:12px;font-weight:800;padding:2px 12px;border-radius:999px;white-space:nowrap}
+  .plan h3{margin:0 0 4px;font-size:16px}
+  .plan .price{font-size:30px;font-weight:800;margin:2px 0}
+  .plan .price small{font-size:13px;color:var(--muted);font-weight:700}
+  .plan .sub{font-size:12px;color:var(--warn);font-weight:700;min-height:18px}
+  .plan ul{margin:12px 0 16px;padding-left:1.2em;font-size:14px;color:#334155}
+  .plan li{margin-bottom:4px}
+  .plan .btn{margin-top:auto}
+  .article{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px 28px;max-width:820px;margin:0 auto;font-size:15px}
+  .article h3{font-size:18px;margin:26px 0 8px}
+  .article h3:first-child{margin-top:0}
+  .article p{margin:0 0 12px}
+  .article ol{padding-left:1.4em;margin:0 0 12px}
+  .faq details{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:8px;background:#fff}
+  .faq summary{font-weight:700;cursor:pointer}
+  .faq details p{margin:8px 0 0;color:#334155;font-size:14px}
+  .crosslink{display:flex;gap:16px;align-items:center;background:linear-gradient(135deg,#eff6ff,#ecfeff);border:1px solid #bfdbfe;border-radius:var(--radius);padding:20px 22px;max-width:820px;margin:28px auto 0;flex-wrap:wrap}
+  .crosslink .ic{font-size:34px}
+  .crosslink div{flex:1;min-width:220px}
+  .crosslink b{display:block;font-size:16px}
+  .crosslink span{font-size:13px;color:var(--muted)}
   footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);font-size:13px;text-align:center;background:#fff}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
@@ -151,7 +184,7 @@
       <div class="tools-menu-list" role="menu">
         <a href="../../index.html" role="menuitem">🏠 ポータルTOP</a>
         <a href="./index.html" class="current" role="menuitem">① EC画像一括リサイズ＆加工ツール</a>
-        <span>② 追加予定</span>
+        <a href="../invoice-batch/index.html" role="menuitem">② インボイス対応 請求書・納品書・領収書ジェネレーター</a>
         <span>③ 追加予定</span>
       </div>
     </div>
@@ -175,7 +208,7 @@
     <div class="modal-buy">
       キーをお持ちでない方：
       <a href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">このツールの単体キー（780円）</a> ／
-      <a href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">全ツール使い放題マスターキー（2,980円）</a>
+      <a href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">全ツール使い放題マスターキー（今だけ1,480円）</a>
     </div>
   </div>
 </div>
@@ -186,7 +219,8 @@
     <p>商品画像をまとめてドロップ → プリセットを選ぶ → 一括処理。メルカリ・Amazon・楽天・ブログ用の画像がすぐに揃います。</p>
     <div class="chips">
       <span class="chip">🔒 画像はサーバーに送信されません</span>
-      <span class="chip plan" id="planChip" data-testid="plan-chip">無料版：1回3枚まで</span>
+      <span class="chip plan" id="planChip" data-testid="plan-chip">無料版：1日3枚まで</span>
+      <span class="quota" id="quota" data-testid="quota">本日の無料枠：残り 3 / 3 枚</span>
     </div>
   </div>
 
@@ -305,12 +339,12 @@
       </div>
 
       <div class="limit-banner" id="limitBanner" data-testid="limit-banner">
-        <b>🔒 無料版は1回3枚までです。</b> 4枚目以降はロックされ、処理されません。<br>
+        <b>🔒 <span id="limitBannerText">無料版は1日3枚までです。</span></b> 本日の残り枠を超える分はロックされ、このままでは処理できません。<br>
         プロ版なら<b>最大100枚</b>を一括処理、ZIPでまとめてダウンロードできます。
         <div class="btns">
           <button class="btn btn-gold btn-sm" type="button" data-open-license>キーを入力して解除</button>
           <a class="btn btn-ghost btn-sm" href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">単体キーを購入（780円）</a>
-          <a class="btn btn-ghost btn-sm" href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">全ツール使い放題（2,980円）</a>
+          <a class="btn btn-ghost btn-sm" href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">全ツール使い放題（今だけ1,480円）</a>
         </div>
       </div>
 
@@ -328,6 +362,82 @@
         <div class="results" id="results" data-testid="results"></div>
       </div>
     </section>
+  </div>
+
+  <!-- ===== 料金比較・解説 ===== -->
+  <div class="info">
+    <h2 class="sec" id="pricing">料金プラン</h2>
+    <p class="lead">まずは無料で試してみて、毎日の出品に合いそうなら解除してください。どれも買い切りで、月額はかかりません。</p>
+    <div class="plans" data-testid="pricing-table">
+      <div class="plan">
+        <h3>無料版</h3>
+        <div class="price">0<small>円</small></div>
+        <div class="sub">1日3枚まで</div>
+        <ul>
+          <li>すべてのプリセット（メルカリ／Amazon／楽天／WebP）</li>
+          <li>白背景の余白追加</li>
+          <li>透かし文字（右下固定）</li>
+          <li>1枚ずつダウンロード</li>
+        </ul>
+        <a class="btn btn-ghost" href="#drop">このまま使う</a>
+      </div>
+      <div class="plan">
+        <h3>単体キー</h3>
+        <div class="price">780<small>円（買い切り）</small></div>
+        <div class="sub">このツールのプロ版</div>
+        <ul>
+          <li>1回最大100枚・1日の枚数制限なし</li>
+          <li>ZIPで一括ダウンロード</li>
+          <li>透かし位置を9か所から選べる／タイル配置</li>
+        </ul>
+        <a class="btn btn-primary" href="https://note.com/iroiro_chisiki/n/nc0372617bcbc" target="_blank" rel="noopener">単体キーを買う（780円）</a>
+      </div>
+      <div class="plan reco">
+        <span class="ribbon">いちばんお得</span>
+        <h3>マスターキー</h3>
+        <div class="price"><small>今だけ</small>1,480<small>円（買い切り）</small></div>
+        <div class="sub">ツール5個公開で2,980円に値上げ予定</div>
+        <ul>
+          <li>工房の全ツールのプロ版をまとめて解除</li>
+          <li>請求書・納品書ジェネレーターも使い放題</li>
+          <li>これから増えるツールも追加料金なし</li>
+        </ul>
+        <a class="btn btn-gold" href="https://note.com/iroiro_chisiki/n/n6d936e1ebc3b" target="_blank" rel="noopener">マスターキーを買う（今だけ1,480円）</a>
+      </div>
+    </div>
+
+    <h2 class="sec" id="guide">使い方と、よくある質問</h2>
+    <p class="lead">はじめて使う人向けに、ざっくりまとめておきます。</p>
+    <div class="article" data-testid="guide">
+      <h3>EC出品画像に「白背景」と「リサイズ」が必要なわけ</h3>
+      <p>メルカリやラクマの一覧画面は正方形で表示されます。縦長の写真をそのまま出すと、端が勝手に切られて商品の大事なところが見えなくなりがちです。先に白い余白を足して正方形にしておけば、全体がきちんと収まります。</p>
+      <p>Amazonはもっとはっきりしていて、メイン画像は「純白の背景」がルールです。長辺1000px以上ならズームも効くので、2000×2000で用意しておくと安心です。楽天も正方形が基本なので、結局どのモールでも「正方形＋白背景」にしておくのがいちばん手堅いんですよね。</p>
+      <p>あとはファイルサイズ。スマホで撮った写真は1枚数MBあることも多く、アップロードに時間がかかります。リサイズしておくだけで、出品作業がだいぶ軽くなります。</p>
+
+      <h3>使い方は3ステップ</h3>
+      <ol>
+        <li><b>画像をドロップ</b>：上の枠に画像をまとめてドラッグします。クリックして選んでもOKです。</li>
+        <li><b>プリセットを選ぶ</b>：メルカリ・Amazon・楽天・WebPから選ぶだけ。余白や透かしもここで足せます。</li>
+        <li><b>「一括処理する」を押す</b>：終わったら1枚ずつ、プロ版ならZIPでまとめて保存できます。</li>
+      </ol>
+
+      <h3>よくある質問</h3>
+      <div class="faq">
+        <details><summary>Q. 画像はどこかにアップロードされますか？</summary><p>されません。読み込みから加工、保存まで、ぜんぶあなたのブラウザの中だけで終わります。発売前の商品写真でも安心して使ってください。</p></details>
+        <details><summary>Q. 無料版の「1日3枚」はいつリセットされますか？</summary><p>日付が変わったタイミングで自動で3枚に戻ります。残りの枚数は画面上の「本日の無料枠」でいつでも確認できます。</p></details>
+        <details><summary>Q. 100枚まとめて処理しても重くなりませんか？</summary><p>1枚ずつ順番に処理して、終わるたびにメモリを片付ける作りにしています。スマホでも動きますが、枚数が多いときはPCのほうが楽です。</p></details>
+        <details><summary>Q. 単体キーとマスターキー、どっちを買えばいいですか？</summary><p>このツールだけ使うなら単体キー（780円）で十分です。請求書ツールなど他のツールも使いそうなら、今だけ1,480円のマスターキーのほうがお得です。ツールが5個そろったら2,980円に上げる予定です。</p></details>
+      </div>
+    </div>
+
+    <div class="crosslink">
+      <span class="ic">🧾</span>
+      <div>
+        <b>請求書・納品書・領収書もブラウザだけで</b>
+        <span>インボイス対応で税率別の消費税も自動計算。こちらも無料で使えます。</span>
+      </div>
+      <a class="btn btn-primary btn-sm" href="../invoice-batch/" data-testid="crosslink-invoice">2号機を見てみる →</a>
+    </div>
   </div>
 </main>
 
@@ -347,7 +457,8 @@
   var MASTER_KEY = 'MASTER-2026-VIP';
   // ツール登録簿（ツール追加時はここに追記）
   var TOOLS = {
-    'ec-image-batch': { name: 'EC画像一括リサイズ＆加工ツール', key: 'PRO-EC-2026' }
+    'ec-image-batch': { name: 'EC画像一括リサイズ＆加工ツール', key: 'PRO-EC-2026' },
+    'invoice-batch': { name: 'インボイス対応 請求書・納品書・領収書ジェネレーター', key: 'PRO-INV-2026' }
   };
   var CURRENT_TOOL = 'ec-image-batch';
 
@@ -457,8 +568,9 @@
  * ===================================================================== */
 (function () {
   'use strict';
-  var FREE_LIMIT = 3;
-  var PRO_LIMIT = 100;
+  var FREE_LIMIT = 3;          // 無料版：1日累計の上限枚数
+  var PRO_LIMIT = 100;         // プロ版：1回あたりの上限枚数（1日の上限なし）
+  var USAGE_KEY = 'sakutto-ec-daily-usage';
   var MAX_DIM = 8000;
   var JSZIP_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
 
@@ -479,14 +591,45 @@
     wmOpacity: $('wmOpacity'), wmOpacityVal: $('wmOpacityVal'), wmColor: $('wmColor'), posGrid: $('posGrid'), wmTile: $('wmTile'),
     drop: $('drop'), fileInput: $('fileInput'), countLabel: $('countLabel'), clearBtn: $('clearBtn'), processBtn: $('processBtn'),
     limitBanner: $('limitBanner'), thumbs: $('thumbs'), progress: $('progress'), progressBar: $('progressBar'), status: $('status'),
-    resultsWrap: $('resultsWrap'), results: $('results'), zipBtn: $('zipBtn'), planChip: $('planChip')
+    resultsWrap: $('resultsWrap'), results: $('results'), zipBtn: $('zipBtn'), planChip: $('planChip'),
+    quota: $('quota'), limitBannerText: $('limitBannerText')
   };
 
-  var state = { preset: 'mercari', suffix: 'mercari', pos: 'br', items: [], results: [], busy: false };
+  var state = { preset: 'mercari', suffix: 'mercari', pos: 'br', items: [], results: [], zip: null, busy: false };
   var uid = 0;
 
   function isPro() { return window.SakuttoLicense.isPro(); }
-  function limit() { return isPro() ? PRO_LIMIT : FREE_LIMIT; }
+
+  /* ---------- 無料枠（1日累計）：localStorage に日付と当日処理枚数を保存 ---------- */
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function loadUsage() {
+    var today = todayStr();
+    try {
+      var u = JSON.parse(localStorage.getItem(USAGE_KEY) || 'null');
+      if (u && u.date === today && typeof u.count === 'number' && u.count >= 0) return u;
+    } catch (e) { /* 壊れたデータはリセット */ }
+    return { date: today, count: 0 }; // 日付が変わっていれば自動リセット
+  }
+  function addUsage(n) {
+    var u = loadUsage();
+    u.count += n;
+    try { localStorage.setItem(USAGE_KEY, JSON.stringify(u)); } catch (e) { /* プライベートモード等 */ }
+  }
+  function remainingToday() { return Math.max(0, FREE_LIMIT - loadUsage().count); }
+  function limit() { return isPro() ? PRO_LIMIT : remainingToday(); }
+  function renderQuota() {
+    if (isPro()) {
+      el.quota.textContent = 'プロ版：1回最大' + PRO_LIMIT + '枚・1日の上限なし';
+      el.quota.classList.remove('empty-q');
+    } else {
+      var r = remainingToday();
+      el.quota.textContent = '本日の無料枠：残り ' + r + ' / ' + FREE_LIMIT + ' 枚';
+      el.quota.classList.toggle('empty-q', r === 0);
+    }
+  }
 
   /* ---------- 設定UI ---------- */
   function applyPreset(name) {
@@ -529,7 +672,7 @@
   el.wmText.addEventListener('input', function () { if (el.wmText.value.trim()) el.wmOn.checked = true; });
 
   function applyPlan(pro) {
-    el.planChip.textContent = pro ? 'プロ版：1回100枚まで・ZIP一括DL・透かし位置カスタム' : '無料版：1回3枚まで';
+    el.planChip.textContent = pro ? 'プロ版：1回100枚まで・ZIP一括DL・透かし位置カスタム' : '無料版：1日3枚まで';
     Array.prototype.forEach.call(el.posGrid.children, function (b) { b.disabled = !pro && b.dataset.pos !== 'br'; });
     el.wmTile.disabled = !pro;
     if (!pro) {
@@ -566,6 +709,7 @@
     renderThumbs();
   }
   function renderThumbs() {
+    renderQuota();
     var lim = limit();
     el.thumbs.innerHTML = '';
     state.items.forEach(function (it, i) {
@@ -589,7 +733,11 @@
     var n = state.items.length;
     var usable = Math.min(n, lim);
     el.countLabel.textContent = n ? (n + '枚' + (n > usable ? '（処理対象 ' + usable + '枚）' : '')) : '0枚';
-    el.limitBanner.classList.toggle('show', !isPro() && n > FREE_LIMIT);
+    var overFree = !isPro() && n > lim;
+    el.limitBannerText.textContent = lim === 0
+      ? '本日の無料枠（' + FREE_LIMIT + '枚）を使い切りました。'
+      : '本日の無料枠は残り' + lim + '枚です（無料版は1日' + FREE_LIMIT + '枚まで）。';
+    el.limitBanner.classList.toggle('show', overFree);
     el.clearBtn.disabled = !n || state.busy;
     el.processBtn.disabled = !n || state.busy;
   }
@@ -616,7 +764,7 @@
   });
 
   /* ---------- 画像処理 ---------- */
-  function setStatus(t) { el.status.textContent = t || ''; }
+  function setStatus(t, isErr) { el.status.textContent = t || ''; el.status.classList.toggle('err', !!isErr); }
   function setProgress(r) { el.progress.classList.add('show'); el.progressBar.style.width = Math.round(r * 100) + '%'; }
 
   function decode(file) {
@@ -735,34 +883,62 @@
   function clearResults() {
     state.results.forEach(function (r) { if (r.url) URL.revokeObjectURL(r.url); });
     state.results = [];
+    state.zip = null;
     el.results.innerHTML = '';
     el.resultsWrap.style.display = 'none';
   }
 
+  // 1枚分：読み込み → リサイズ → Blob化。終わったら canvas を即解放する
+  async function processOne(file, s) {
+    var src = null, canvas = null;
+    try {
+      src = await decode(file);
+      canvas = renderImage(src, s);
+      if (src.close) src.close();
+      src = null;
+      var blob = await toBlob(canvas, s.format, s.quality);
+      return { blob: blob, w: canvas.width, h: canvas.height };
+    } finally {
+      if (src && src.close) src.close();
+      if (canvas) { canvas.width = 0; canvas.height = 0; }
+    }
+  }
+
   async function processAll() {
     if (state.busy || !state.items.length) return;
+    var pro = isPro();
     var lim = limit();
-    // 無料版の上限チェック：上限を超えた画像は処理対象から除外（ブロック）
+    // 無料版：当日の残り枠を超える処理はまるごとブロック
+    if (!pro && state.items.length > lim) {
+      setStatus(lim === 0
+        ? '本日の無料枠（' + FREE_LIMIT + '枚）を使い切ったため処理できません。明日になると3枚に戻ります。プロ版なら1日の上限なしで使えます。'
+        : '本日の無料枠は残り' + lim + '枚です。' + state.items.length + '枚は処理できないため、画像を' + lim + '枚以下に減らすか、プロ版で解除してください。', true);
+      renderThumbs();
+      return;
+    }
     var targets = state.items.slice(0, lim);
     var blocked = state.items.length - targets.length;
     var s = readSettings();
     state.busy = true; renderThumbs();
     clearResults();
     el.resultsWrap.style.display = '';
+    // プロ版：処理と並行して1枚ずつZIPへ追加（読み込み失敗時は後でまとめて作る）
+    var zip = null;
+    if (pro) {
+      try { var JSZipCtor = await loadJSZip(); zip = new JSZipCtor(); } catch (e) { zip = null; }
+    }
     var used = {}, ok = 0, fallbackFmt = false;
+    // 並列展開せず、1枚ずつ順番に処理するキュー
     for (var i = 0; i < targets.length; i++) {
       var it = targets[i];
       setStatus('処理中… ' + (i + 1) + ' / ' + targets.length + '：' + it.file.name);
       setProgress(i / targets.length);
       try {
-        var src = await decode(it.file);
-        var canvas = renderImage(src, s);
-        if (src.close) src.close();
-        var blob = await toBlob(canvas, s.format, s.quality);
-        if (blob.type && blob.type !== s.format) fallbackFmt = true; // 非対応ブラウザでのWebP→PNGフォールバック
-        var name = outName(it.file.name, blob.type || s.format, used);
-        var r = { name: name, blob: blob, url: URL.createObjectURL(blob), w: canvas.width, h: canvas.height };
-        canvas.width = canvas.height = 0;
+        var out = await processOne(it.file, s);
+        if (out.blob.type && out.blob.type !== s.format) fallbackFmt = true; // 非対応ブラウザでのWebP→PNGフォールバック
+        var name = outName(it.file.name, out.blob.type || s.format, used);
+        var r = { name: name, blob: out.blob, url: URL.createObjectURL(out.blob), w: out.w, h: out.h };
+        if (zip) zip.file(name, out.blob);
         state.results.push(r);
         appendResult(r);
         ok++;
@@ -771,9 +947,12 @@
       }
       await new Promise(function (r) { setTimeout(r, 0); });
     }
+    state.zip = zip;
+    if (!pro && ok > 0) addUsage(ok);
     setProgress(1);
     var msg = ok + '枚の処理が完了しました。';
-    if (blocked > 0) msg += '（無料版のため' + blocked + '枚は処理されていません。プロ版なら最大' + PRO_LIMIT + '枚まで一括処理できます）';
+    if (blocked > 0) msg += '（上限のため' + blocked + '枚は処理されていません）';
+    if (!pro) msg += ' 本日の無料枠は残り' + remainingToday() + '枚です。';
     if (fallbackFmt) msg += ' ※このブラウザは選択形式の書き出しに未対応のため、PNGで保存しました。';
     setStatus(msg);
     state.busy = false; renderThumbs();
@@ -838,9 +1017,13 @@
     el.zipBtn.disabled = true;
     try {
       setStatus('ZIPを作成中…');
-      var JSZip = await loadJSZip();
-      var zip = new JSZip();
-      state.results.forEach(function (r) { zip.file(r.name, r.blob); });
+      var zip = state.zip;
+      if (!zip) { // 処理中にJSZipを読めなかった場合のみ、ここで順番に追加する
+        var JSZipCtor = await loadJSZip();
+        zip = new JSZipCtor();
+        state.results.forEach(function (r) { zip.file(r.name, r.blob); });
+        state.zip = zip;
+      }
       var blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
       var d = new Date();
       var stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '_' +
@@ -855,6 +1038,10 @@
   });
   // プロ版ならZIPライブラリを事前に読み込んでおく（失敗しても処理は継続）
   window.SakuttoLicense.onChange(function (pro) { if (pro) loadJSZip().catch(function () {}); });
+
+  // 日付をまたいで開きっぱなしでも、タブに戻ったら残り枠を再計算
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !state.busy) renderThumbs(); });
+  window.addEventListener('storage', function (e) { if (e.key === USAGE_KEY && !state.busy) renderThumbs(); });
 
   /* ---------- 初期化 ---------- */
   applyPreset('mercari');
