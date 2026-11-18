@@ -1,0 +1,4 @@
+/tools/ec-image-batch/ https://homepage-kobo.com/tools/resize/ 301!
+/tools/ec-image-batch/* https://homepage-kobo.com/tools/resize/ 301!
+/tools/invoice-batch/ https://homepage-kobo.com/tools/invoice/ 301!
+/tools/invoice-batch/* https://homepage-kobo.com/tools/invoice/ 301!
